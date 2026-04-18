@@ -1,8 +1,12 @@
 from django.http import JsonResponse
 from django.templatetags.static import static
+from django.utils import timezone
 
+import json
 
 from .models import Product
+from .models import Order
+from .models import OrderItem
 
 
 def banners_list_api(request):
@@ -58,5 +62,34 @@ def product_list_api(request):
 
 
 def register_order(request):
-    # TODO это лишь заглушка
+    new_order_info = json.loads(request.body.decode())
+
+    for key, value in new_order_info.items(): # Отладочный принт
+        print(f'{key}: {value}')
+
+    ordered_products = new_order_info['products']
+
+    total_price = 0
+
+    for item in ordered_products:
+        db_product = Product.objects.get(id=item['product'])
+        total_price += db_product.price * item['quantity']
+
+    order = Order.objects.create(
+        first_name=new_order_info['firstname'],
+        last_name=new_order_info['lastname'],
+        phone_number=new_order_info['phonenumber'],
+        address=new_order_info['address'],
+        price=total_price,
+        created_at=timezone.now(),
+        )
+    
+    for item in ordered_products:
+        db_product = Product.objects.get(id=item['product'])
+        OrderItem.objects.create(
+            product=db_product,
+            order=order,
+            quantity=item['quantity']
+        )
+
     return JsonResponse({})
