@@ -30,11 +30,19 @@ class OrderSerializer(ModelSerializer):
     products = ListField(
         child=OrderItemSerializer(),
         allow_empty=False,
+        write_only=True,
     )
 
     class Meta:
         model = Order
-        fields = ['firstname', 'lastname', 'phonenumber', 'address', 'products']
+        fields = [
+            'id',
+            'firstname',
+            'lastname',
+            'phonenumber',
+            'address',
+            'products',
+        ]
 
 
 def banners_list_api(request):
@@ -118,11 +126,4 @@ def register_order(request):
     products = [OrderItem(order=order, **fields) for fields in products_fields]
     OrderItem.objects.bulk_create(products)
 
-    return Response(
-        data={
-            'message': 'Order created successful',
-            'order_id': order.id,
-            'total_price': total_price,
-        },
-        status=status.HTTP_201_CREATED
-    )
+    return Response(OrderSerializer(order).data ,status=status.HTTP_201_CREATED)
