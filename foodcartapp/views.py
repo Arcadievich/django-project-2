@@ -8,6 +8,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
+import phonenumbers
+
 import json
 from typing import Any, Tuple, Dict
 
@@ -70,6 +72,7 @@ def product_list_api(request):
 
 def order_info_validation(order_info: Any) -> Tuple[bool, Dict[str, Any]]:
     """Валидация информации о заказе."""
+    # Проверки поля products
     if not isinstance(order_info, dict):
         return False, {
             'status_code': status.HTTP_400_BAD_REQUEST,
@@ -86,7 +89,7 @@ def order_info_validation(order_info: Any) -> Tuple[bool, Dict[str, Any]]:
     
     if order_info.get('products') is None:
         return False, {
-            'status_code': status.HTTP_400_BAD_REQUEST,
+            'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
             'error': 'Products field is empty',
             'message': 'Products field should not be empty',
         }
@@ -101,11 +104,35 @@ def order_info_validation(order_info: Any) -> Tuple[bool, Dict[str, Any]]:
     
     if products == []:
         return False, {
-            'status_code': status.HTTP_400_BAD_REQUEST,
+            'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
             'error': 'Products field is empty',
             'message': 'Products field should not be empty',
         }
     
+    product_ids = [product_dict['product'] for product_dict in products]
+    for product_id in product_ids:
+        try:
+            Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return False, {
+                'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'error': 'Invalid products field',
+                'message': 'A non-existent product id is specified',
+            }
+    
+    # Проверки строковых полей
+    not_empty_fields = ['firstname', 'phonenumber']
+
+    for field in not_empty_fields:
+        value = order_info.get(field)
+
+        if not value:
+            return False, {
+                'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'error': f'Ivalid field {field}',
+                'message': f'{field} field should not be empty',
+            }
+
     string_fields = ['firstname', 'lastname', 'phonenumber', 'address']
 
     for field in string_fields:
@@ -117,6 +144,22 @@ def order_info_validation(order_info: Any) -> Tuple[bool, Dict[str, Any]]:
                 'error': f'Invalid {field}',
                 'message': f'{field} must be a string',
             }
+        
+    try:
+        parsed_phonenumber = phonenumbers.parse(order_info['phonenumber'], region='RU')
+
+        if not phonenumbers.is_valid_number(parsed_phonenumber):
+            return False, {
+                'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'error': 'Invalid phonenumber field',
+                'message': 'The specified phonenumber does not exist',
+            }
+    except phonenumbers.NumberParseException:
+        return False, {
+            'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
+            'error': 'Invalid phonenumber field',
+            'message': 'Incorrect phone number format',
+        }
 
     return True, {
         'status_code': status.HTTP_200_OK,
