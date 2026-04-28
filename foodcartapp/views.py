@@ -7,6 +7,8 @@ from django.utils.decorators import method_decorator
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ListField
 
 import phonenumbers
 
@@ -16,6 +18,23 @@ from typing import Any, Tuple, Dict
 from .models import Product
 from .models import Order
 from .models import OrderItem
+
+
+class OrderItemSerializer(ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['product', 'quantity']
+
+
+class OrderSerializer(ModelSerializer):
+    products = ListField(
+        child=OrderItemSerializer(),
+        allow_empty=False,
+    )
+
+    class Meta:
+        model = Order
+        fields = ['firstname', 'lastname', 'phonenumber', 'address', 'products']
 
 
 def banners_list_api(request):
@@ -70,121 +89,13 @@ def product_list_api(request):
     })
 
 
-def order_info_validation(order_info: Any) -> Tuple[bool, Dict[str, Any]]:
-    """Валидация информации о заказе."""
-    # Проверки поля products
-    if not isinstance(order_info, dict):
-        return False, {
-            'status_code': status.HTTP_400_BAD_REQUEST,
-            'error': 'Invalid input format',
-            'message': 'Order info must be a JSON object',
-        }
-    
-    if 'products' not in order_info:
-        return False, {
-            'status_code': status.HTTP_400_BAD_REQUEST,
-            'error': 'Invalid input format',
-            'message': 'Required field is missing',
-        }
-    
-    if order_info.get('products') is None:
-        return False, {
-            'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
-            'error': 'Products field is empty',
-            'message': 'Products field should not be empty',
-        }
-    
-    products = order_info.get('products')
-    if not isinstance(products, list):
-        return False, {
-            'status_code': status.HTTP_400_BAD_REQUEST,
-            'error': 'Invalid products format',
-            'message': 'Products must be a list',
-        }
-    
-    if products == []:
-        return False, {
-            'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
-            'error': 'Products field is empty',
-            'message': 'Products field should not be empty',
-        }
-    
-    product_ids = [product_dict['product'] for product_dict in products]
-    for product_id in product_ids:
-        try:
-            Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return False, {
-                'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
-                'error': 'Invalid products field',
-                'message': 'A non-existent product id is specified',
-            }
-    
-    # Проверки строковых полей
-    not_empty_fields = ['firstname', 'phonenumber']
-
-    for field in not_empty_fields:
-        value = order_info.get(field)
-
-        if not value:
-            return False, {
-                'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
-                'error': f'Ivalid field {field}',
-                'message': f'{field} field should not be empty',
-            }
-
-    string_fields = ['firstname', 'lastname', 'phonenumber', 'address']
-
-    for field in string_fields:
-        value = order_info.get(field)
-
-        if not isinstance(value, str):
-            return False, {
-                'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
-                'error': f'Invalid {field}',
-                'message': f'{field} must be a string',
-            }
-        
-    try:
-        parsed_phonenumber = phonenumbers.parse(order_info['phonenumber'], region='RU')
-
-        if not phonenumbers.is_valid_number(parsed_phonenumber):
-            return False, {
-                'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
-                'error': 'Invalid phonenumber field',
-                'message': 'The specified phonenumber does not exist',
-            }
-    except phonenumbers.NumberParseException:
-        return False, {
-            'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
-            'error': 'Invalid phonenumber field',
-            'message': 'Incorrect phone number format',
-        }
-
-    return True, {
-        'status_code': status.HTTP_200_OK,
-        'message': 'Order validation successful',
-    }
-
 @csrf_exempt
 @api_view(['POST'])
 def register_order(request):
     new_order_info = request.data
 
-    is_valid, validation_response = order_info_validation(new_order_info)
-
-    if not is_valid:
-        return Response(
-            data={
-                'error': validation_response.get('error'),
-                'detail': validation_response.get('message'),
-                'status_code': validation_response.get('status_code'),
-            },
-            status=validation_response.get('status_code', status.HTTP_400_BAD_REQUEST)
-        )
-
-    for key, value in new_order_info.items(): # Отладочный принт
-        print(f'{key}: {value}')
+    serializer = OrderSerializer(data=new_order_info)
+    serializer.is_valid(raise_exception=True)
 
     ordered_products = new_order_info['products']
 
@@ -195,21 +106,17 @@ def register_order(request):
         total_price += db_product.price * item['quantity']
 
     order = Order.objects.create(
-        first_name=new_order_info['firstname'],
-        last_name=new_order_info['lastname'],
-        phone_number=new_order_info['phonenumber'],
-        address=new_order_info['address'],
+        firstname=serializer.validated_data['firstname'],
+        lastname=serializer.validated_data['lastname'],
+        phonenumber=serializer.validated_data['phonenumber'],
+        address=serializer.validated_data['address'],
         price=total_price,
-        created_at=timezone.now(),
-        )
+        created_at=timezone.now()
+    )
     
-    for item in ordered_products:
-        db_product = Product.objects.get(id=item['product'])
-        OrderItem.objects.create(
-            product=db_product,
-            order=order,
-            quantity=item['quantity']
-        )
+    products_fields = serializer.validated_data['products']
+    products = [OrderItem(order=order, **fields) for fields in products_fields]
+    OrderItem.objects.bulk_create(products)
 
     return Response(
         data={
