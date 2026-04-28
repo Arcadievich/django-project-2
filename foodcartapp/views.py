@@ -6,8 +6,10 @@ from django.utils.decorators import method_decorator
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework import status
 
 import json
+from typing import Any, Tuple, Dict
 
 from .models import Product
 from .models import Order
@@ -66,10 +68,77 @@ def product_list_api(request):
     })
 
 
+def order_info_validation(order_info: Any) -> Tuple[bool, Dict[str, Any]]:
+    """Валидация информации о заказе."""
+    if not isinstance(order_info, dict):
+        return False, {
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': 'Invalid input format',
+            'message': 'Order info must be a JSON object',
+        }
+    
+    if 'products' not in order_info:
+        return False, {
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': 'Invalid input format',
+            'message': 'Required field is missing',
+        }
+    
+    if order_info.get('products') is None:
+        return False, {
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': 'Products field is empty',
+            'message': 'Products field should not be empty',
+        }
+    
+    products = order_info.get('products')
+    if not isinstance(products, list):
+        return False, {
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': 'Invalid products format',
+            'message': 'Products must be a list',
+        }
+    
+    if products == []:
+        return False, {
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': 'Products field is empty',
+            'message': 'Products field should not be empty',
+        }
+    
+    string_fields = ['firstname', 'lastname', 'phonenumber', 'address']
+
+    for field in string_fields:
+        value = order_info.get(field)
+
+        if not isinstance(value, str):
+            return False, {
+                'status_code': status.HTTP_422_UNPROCESSABLE_ENTITY,
+                'error': f'Invalid {field}',
+                'message': f'{field} must be a string',
+            }
+
+    return True, {
+        'status_code': status.HTTP_200_OK,
+        'message': 'Order validation successful',
+    }
+
 @csrf_exempt
 @api_view(['POST'])
 def register_order(request):
     new_order_info = request.data
+
+    is_valid, validation_response = order_info_validation(new_order_info)
+
+    if not is_valid:
+        return Response(
+            data={
+                'error': validation_response.get('error'),
+                'detail': validation_response.get('message'),
+                'status_code': validation_response.get('status_code'),
+            },
+            status=validation_response.get('status_code', status.HTTP_400_BAD_REQUEST)
+        )
 
     for key, value in new_order_info.items(): # Отладочный принт
         print(f'{key}: {value}')
@@ -99,4 +168,11 @@ def register_order(request):
             quantity=item['quantity']
         )
 
-    return Response()
+    return Response(
+        data={
+            'message': 'Order created successful',
+            'order_id': order.id,
+            'total_price': total_price,
+        },
+        status=status.HTTP_201_CREATED
+    )
