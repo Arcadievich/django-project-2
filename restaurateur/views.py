@@ -99,6 +99,7 @@ def view_orders(request):
     for order in orders:
         order_data = {}
         order_data['id'] = order.id
+        order_data['price'] = order.price
         order_data['fullname'] = order.firstname + ' ' + order.lastname
         order_data['phonenumber'] = order.phonenumber
         order_data['address'] = order.address
