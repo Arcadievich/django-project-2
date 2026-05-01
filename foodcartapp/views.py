@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.templatetags.static import static
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
+from django.db import transaction
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -99,6 +99,7 @@ def product_list_api(request):
 
 @csrf_exempt
 @api_view(['POST'])
+@transaction.atomic
 def register_order(request):
     new_order_info = request.data
 
