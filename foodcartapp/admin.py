@@ -134,7 +134,7 @@ class OrderAdmin(admin.ModelAdmin):
 
         if next_url and url_has_allowed_host_and_scheme(
             next_url,
-            allowed_hosts={request.get_host()},
+            allowed_hosts=[request.get_host()],
             require_https=request.is_secure()
         ):
             return redirect(next_url)
