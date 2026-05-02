@@ -94,11 +94,12 @@ def view_restaurants(request):
 def view_orders(request):
     orders_list = []
 
-    orders = Order.objects.all()
+    orders = Order.objects.exclude(status='completed_order')
 
     for order in orders:
         order_data = {}
         order_data['id'] = order.id
+        order_data['status'] = order.get_status_display()
         order_data['price'] = order.price
         order_data['fullname'] = order.firstname + ' ' + order.lastname
         order_data['phonenumber'] = order.phonenumber

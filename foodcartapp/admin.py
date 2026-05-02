@@ -123,6 +123,7 @@ class OrderAdmin(admin.ModelAdmin):
         'phonenumber',
         'address',
         'price',
+        'status',
         'created_at',
     ]
 

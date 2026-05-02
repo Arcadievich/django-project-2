@@ -126,6 +126,13 @@ class RestaurantMenuItem(models.Model):
 
 
 class Order(models.Model):
+    ORDER_STATUS_CHOICES = [
+        ('new_order', 'Необработанный'),
+        ('order_accepted', 'Принят'),
+        ('order_delivery', 'Доставляется'),
+        ('completed_order', 'Выполнен'),
+    ]
+
     firstname = models.CharField('Имя', max_length=20)
     lastname = models.CharField('Фамилия', max_length=20)
     phonenumber = PhoneNumberField('Телефон', max_length=20)
@@ -134,6 +141,13 @@ class Order(models.Model):
         max_digits=8,
         decimal_places=2,
         verbose_name='Стоимость заказа',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ORDER_STATUS_CHOICES,
+        db_index=True,
+        default='new_order',
+        verbose_name='Статус заказа',
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
