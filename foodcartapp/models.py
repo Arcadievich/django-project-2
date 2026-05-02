@@ -132,6 +132,10 @@ class Order(models.Model):
         ('order_delivery', 'Доставляется'),
         ('completed_order', 'Выполнен'),
     ]
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'Наличными'),
+        ('electronic', 'Электронно'),
+    ]
 
     firstname = models.CharField('Имя', max_length=20)
     lastname = models.CharField('Фамилия', max_length=20)
@@ -148,6 +152,15 @@ class Order(models.Model):
         db_index=True,
         default='new_order',
         verbose_name='Статус заказа',
+    )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHOD_CHOICES,
+        db_index=True,
+        default='cash',
+        blank=True,
+        null=True,
+        verbose_name='Способ оплаты',
     )
     comment = models.TextField(blank=True, null=True, verbose_name='Комментарий')
     created_at = models.DateTimeField(

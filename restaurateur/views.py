@@ -100,6 +100,7 @@ def view_orders(request):
         order_data = {}
         order_data['id'] = order.id
         order_data['status'] = order.get_status_display()
+        order_data['payment_method'] = order.get_payment_method_display()
         order_data['price'] = order.price
         order_data['fullname'] = order.firstname + ' ' + order.lastname
         order_data['phonenumber'] = order.phonenumber
