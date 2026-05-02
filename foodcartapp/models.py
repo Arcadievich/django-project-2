@@ -155,6 +155,16 @@ class Order(models.Model):
         db_index=True,
         verbose_name='Дата оформления',
     )
+    called_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Время звонка',
+    )
+    delivered_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Доставлен',
+    )
 
     class Meta:
         verbose_name = 'Заказ'
