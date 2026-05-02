@@ -20,6 +20,8 @@
       <th>Клиент</th>
       <th>Телефон</th>
       <th>Адрес доставки</th>
+      <th>Комментарий</th>
+      <th>Ресторан</th>
       <th>Ссылка на админку</th>
     </tr>
 
@@ -32,6 +34,25 @@
         <td>{{ item.fullname }}</td>
         <td>{{ item.phonenumber }}</td>
         <td>{{ item.address }}</td>
+        <td>{{ item.comment }}</td>
+        <td>
+          {% if item.restaurant %}
+            {{ item.restaurant.name }}
+          {% else %}
+            {% if item.suitable_restaurants %}
+              <details>
+                <summary>Могут приготовить ({{ item.suitable_restaurants|length }})</summary>
+                <ul>
+                  {% for restaurant in item.suitable_restaurants %}
+                    <li>{{ restaurant.name }}</li>
+                  {% endfor %}
+                </ul>
+              </details>
+            {% else %}
+              <span style="color: red;">Нет подходящих ресторанов</span>
+            {% endif %}
+          {% endif %}
+        </td>
         <td>
           <a href="{% url 'admin:foodcartapp_order_change' object_id=item.id %}?next={{ request.path|urlencode }}">Редактировать</a>
         </td>

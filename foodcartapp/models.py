@@ -162,6 +162,14 @@ class Order(models.Model):
         null=True,
         verbose_name='Способ оплаты',
     )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='orders',
+        verbose_name='Ресторан приготовления',
+    )
     comment = models.TextField(blank=True, null=True, verbose_name='Комментарий')
     created_at = models.DateTimeField(
         auto_now_add=True,

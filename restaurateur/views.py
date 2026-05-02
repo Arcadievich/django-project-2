@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
 
-from foodcartapp.models import Product, Restaurant, Order
+from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
 
 
 class Login(forms.Form):
@@ -94,17 +94,30 @@ def view_restaurants(request):
 def view_orders(request):
     orders_list = []
 
-    orders = Order.objects.exclude(status='completed_order')
+    orders = (Order.objects
+              .exclude(status='completed_order')
+              .order_by('status')
+              .prefetch_related('items__product'))
 
     for order in orders:
-        order_data = {}
-        order_data['id'] = order.id
-        order_data['status'] = order.get_status_display()
-        order_data['payment_method'] = order.get_payment_method_display()
-        order_data['price'] = order.price
-        order_data['fullname'] = order.firstname + ' ' + order.lastname
-        order_data['phonenumber'] = order.phonenumber
-        order_data['address'] = order.address
+        order_data = {
+            'id': order.id,
+            'status': order.get_status_display(),
+            'payment_method': order.get_payment_method_display(),
+            'price': order.price,
+            'fullname': f"{order.firstname} {order.lastname}",
+            'phonenumber': order.phonenumber,
+            'address': order.address,
+            'comment': order.comment,
+            'restaurant': order.restaurant,
+        }
+
+        if not order.restaurant:
+            suitable_restaurants = get_suitable_restaurants_for_order(order)
+            order_data['suitable_restaurants'] = suitable_restaurants
+        else:
+            order_data['suitable_restaurants'] = []
+
         orders_list.append(order_data)
 
     return render(
@@ -112,3 +125,41 @@ def view_orders(request):
         template_name='order_items.html',
         context={'order_items': orders_list},
     )
+
+
+def get_suitable_restaurants_for_order(order):
+    """
+    Возвращает список ресторанов, которые могут приготовить все блюда из заказа.
+    """
+
+    order_items = order.items.select_related('product').all()
+    
+    if not order_items:
+        return []
+    
+    restaurants_per_product = []
+    
+    for order_item in order_items:
+        product = order_item.product
+        
+        suitable_restaurants = set(
+            RestaurantMenuItem.objects.filter(
+                product=product,
+                availability=True
+            ).select_related('restaurant').values_list('restaurant', flat=True)
+        )
+        
+        restaurants_per_product.append(suitable_restaurants)
+    
+    if restaurants_per_product:
+        common_restaurants_ids = set(restaurants_per_product[0])
+        for rest_set in restaurants_per_product[1:]:
+            common_restaurants_ids &= rest_set
+        
+        suitable_restaurants = Restaurant.objects.filter(
+            id__in=common_restaurants_ids
+        )
+        
+        return suitable_restaurants
+    
+    return []
