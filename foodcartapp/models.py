@@ -149,6 +149,7 @@ class Order(models.Model):
         default='new_order',
         verbose_name='Статус заказа',
     )
+    comment = models.TextField(blank=True, null=True, verbose_name='Комментарий')
     created_at = models.DateTimeField(
         auto_now_add=True,
         db_index=True,
