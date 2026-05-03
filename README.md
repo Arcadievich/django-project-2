@@ -59,6 +59,11 @@ pip install -r requirements.txt
 SECRET_KEY=django-insecure-0if40nf4nf93n4
 ```
 
+Определите переменную окружения `YANDEX_GEOCODER_API_KEY`. Для этого получите ключ в [Кабинете разработчика](https://developer.tech.yandex.ru/services) и добавьте его в `.env` файл:
+```sh
+YANDEX_GEOCODER_API_KEY=your_key
+```
+
 Создайте файл базы данных SQLite и отмигрируйте её следующей командой:
 
 ```sh

@@ -3,10 +3,12 @@ from django.shortcuts import redirect, render
 from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
-
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
+from django.conf import settings
 
+import requests
+from geopy import distance
 
 from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
 
@@ -114,7 +116,11 @@ def view_orders(request):
 
         if not order.restaurant:
             suitable_restaurants = get_suitable_restaurants_for_order(order)
-            order_data['suitable_restaurants'] = suitable_restaurants
+            restaurants_with_distance = get_restaurants_with_distance(
+                suitable_restaurants, 
+                order.address
+            )
+            order_data['suitable_restaurants'] = restaurants_with_distance
         else:
             order_data['suitable_restaurants'] = []
 
@@ -163,3 +169,71 @@ def get_suitable_restaurants_for_order(order):
         return suitable_restaurants
     
     return []
+
+
+def fetch_coordinates(api_key, address):
+    base_url = "https://geocode-maps.yandex.ru/1.x"
+    response = requests.get(base_url, params={
+        "geocode": address,
+        "apikey": api_key,
+        "format": "json",
+    })
+    response.raise_for_status()
+    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
+
+    if not found_places:
+        return None
+
+    most_relevant = found_places[0]
+    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
+    return (lat, lon)
+
+
+def calc_delivery_distance(restaurant_coords, delivery_coords):
+    if not restaurant_coords or not delivery_coords:
+        return None
+    
+    delivery_distance = distance.distance(
+        restaurant_coords,
+        delivery_coords,
+    ).km
+    
+    return round(delivery_distance, 3)
+
+
+def get_restaurants_with_distance(restaurants, delivery_address):
+    if not restaurants or not delivery_address:
+        return []
+    
+    api_key = settings.YANDEX_GEOCODER_API_KEY
+    
+    delivery_coords = fetch_coordinates(api_key, delivery_address)
+    
+    if not delivery_coords:
+        return [{'restaurant': r, 'distance': None} for r in restaurants]
+    
+    restaurants_with_distance = []
+    for restaurant in restaurants:
+        restaurant_coords = fetch_coordinates(api_key, restaurant.address)
+        
+        if restaurant_coords:
+            distance_km = calc_delivery_distance(
+                restaurant_coords,
+                delivery_coords,
+            )
+            restaurants_with_distance.append({
+                'restaurant': restaurant,
+                'distance': distance_km
+            })
+        else:
+            restaurants_with_distance.append({
+                'restaurant': restaurant,
+                'distance': None
+            })
+    
+    restaurants_with_distance = sorted(
+        restaurants_with_distance,
+        key=lambda x: x['distance'] if x['distance'] is not None else float('inf')
+    )
+    
+    return restaurants_with_distance

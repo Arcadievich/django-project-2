@@ -43,8 +43,15 @@
               <details>
                 <summary>Могут приготовить ({{ item.suitable_restaurants|length }})</summary>
                 <ul>
-                  {% for restaurant in item.suitable_restaurants %}
-                    <li>{{ restaurant.name }}</li>
+                  {% for restaurant_data in item.suitable_restaurants %}
+                    <li>
+                      {{ restaurant_data.restaurant.name }} - 
+                      {% if restaurant_data.distance %}
+                        {{ restaurant_data.distance }} км
+                      {% else %}
+                        расстояние неизвестно
+                      {% endif %}
+                    </li>
                   {% endfor %}
                 </ul>
               </details>
@@ -58,6 +65,6 @@
         </td>
       </tr>
     {% endfor %}
-   </table>
+    </table>
   </div>
 {% endblock %}
