@@ -59,7 +59,12 @@ pip install -r requirements.txt
 SECRET_KEY=django-insecure-0if40nf4nf93n4
 ```
 
-Определите переменную окружения `YANDEX_GEOCODER_API_KEY`. Для этого получите ключ в [Кабинете разработчика](https://developer.tech.yandex.ru/services) и добавьте его в `.env` файл:
+Определите переменную окружения `YANDEX_GEOCODER_API_KEY`. Для этого получите ключ в [Кабинете разработчика](https://developer.tech.yandex.ru/services)
+
+<img width="1908" height="882" alt="howto" src="https://github.com/user-attachments/assets/ae14b3c8-9345-4ee8-89ae-c42d49796893" />
+
+
+И добавьте его в `.env` файл:
 ```sh
 YANDEX_GEOCODER_API_KEY=your_key
 ```
