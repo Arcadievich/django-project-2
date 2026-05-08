@@ -8,8 +8,8 @@ class PlaceCoordinates(models.Model):
         db_index=True,
         verbose_name='Адрес',
     )
-    lat = models.DecimalField('Широта', max_digits=9, decimal_places=6)
-    lon = models.DecimalField('Долгота', max_digits=9, decimal_places=6)
+    lat = models.DecimalField('Широта', max_digits=9, decimal_places=6, null=True)
+    lon = models.DecimalField('Долгота', max_digits=9, decimal_places=6, null=True)
     created_at = models.DateTimeField(
         auto_now_add=True,
         db_index=True,

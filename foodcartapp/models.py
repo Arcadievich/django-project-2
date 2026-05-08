@@ -133,6 +133,7 @@ class Order(models.Model):
         ('completed_order', 'Выполнен'),
     ]
     PAYMENT_METHOD_CHOICES = [
+        ('none', 'Не указан'),
         ('cash', 'Наличными'),
         ('electronic', 'Электронно'),
     ]
@@ -157,9 +158,8 @@ class Order(models.Model):
         max_length=20,
         choices=PAYMENT_METHOD_CHOICES,
         db_index=True,
-        default='cash',
+        default='none',
         blank=True,
-        null=True,
         verbose_name='Способ оплаты',
     )
     restaurant = models.ForeignKey(
@@ -170,18 +170,20 @@ class Order(models.Model):
         related_name='orders',
         verbose_name='Ресторан приготовления',
     )
-    comment = models.TextField(blank=True, null=True, verbose_name='Комментарий')
+    comment = models.TextField(blank=True, verbose_name='Комментарий')
     created_at = models.DateTimeField(
         auto_now_add=True,
         db_index=True,
         verbose_name='Дата оформления',
     )
     called_at = models.DateTimeField(
+        db_index=True,
         blank=True,
         null=True,
         verbose_name='Время звонка',
     )
     delivered_at = models.DateTimeField(
+        db_index=True,
         blank=True,
         null=True,
         verbose_name='Доставлен',
