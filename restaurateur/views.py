@@ -7,9 +7,8 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 from django.conf import settings
 
-from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
-
-from placesapp.views import fetch_coordinates, calc_delivery_distance
+from foodcartapp.models import Product, Restaurant, Order
+from .services import get_restaurants_for_orders, get_restaurants_with_distance
 
 
 class Login(forms.Form):
@@ -93,19 +92,23 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders_list = []
-
     orders = (Order.objects
               .exclude(status='completed_order')
               .order_by('status')
-              .prefetch_related('items__product'))
+              .prefetch_related('items__product')
+              .with_total_price())
+    
+    suitable_restaurants_dict = get_restaurants_for_orders(orders)
 
+    order_list = []
     for order in orders:
+        order_price = order.total_price
+
         order_data = {
             'id': order.id,
             'status': order.get_status_display(),
             'payment_method': order.get_payment_method_display(),
-            'price': order.price,
+            'price': order_price,
             'fullname': f"{order.firstname} {order.lastname}",
             'phonenumber': order.phonenumber,
             'address': order.address,
@@ -114,95 +117,24 @@ def view_orders(request):
         }
 
         if not order.restaurant:
-            suitable_restaurants = get_suitable_restaurants_for_order(order)
-            restaurants_with_distance = get_restaurants_with_distance(
-                suitable_restaurants, 
-                order.address
-            )
-            order_data['suitable_restaurants'] = restaurants_with_distance
+            suitable_restaurants = suitable_restaurants_dict.get(order.id, [])
+
+            if suitable_restaurants:
+                restaurants_with_distance = get_restaurants_with_distance(
+                    suitable_restaurants,
+                    order.address,
+                )
+                order_data['suitable_restaurants'] = restaurants_with_distance
+            else:
+                order_data['suitable_restaurants'] = []
+
         else:
             order_data['suitable_restaurants'] = []
 
-        orders_list.append(order_data)
+        order_list.append(order_data)
 
     return render(
         request,
         template_name='order_items.html',
-        context={'order_items': orders_list},
+        context={'order_items': order_list},
     )
-
-
-def get_suitable_restaurants_for_order(order):
-    """
-    Возвращает список ресторанов, которые могут приготовить все блюда из заказа.
-    """
-
-    order_items = order.items.select_related('product').all()
-    
-    if not order_items:
-        return []
-    
-    restaurants_per_product = []
-    
-    for order_item in order_items:
-        product = order_item.product
-        
-        suitable_restaurants = set(
-            RestaurantMenuItem.objects.filter(
-                product=product,
-                availability=True
-            ).select_related('restaurant').values_list('restaurant', flat=True)
-        )
-        
-        restaurants_per_product.append(suitable_restaurants)
-    
-    if restaurants_per_product:
-        common_restaurants_ids = set(restaurants_per_product[0])
-        for rest_set in restaurants_per_product[1:]:
-            common_restaurants_ids &= rest_set
-        
-        suitable_restaurants = Restaurant.objects.filter(
-            id__in=common_restaurants_ids
-        )
-        
-        return suitable_restaurants
-    
-    return []
-
-
-def get_restaurants_with_distance(restaurants, delivery_address):
-    if not restaurants or not delivery_address:
-        return []
-    
-    api_key = settings.YANDEX_GEOCODER_API_KEY
-    
-    delivery_coords = fetch_coordinates(api_key, delivery_address)
-    
-    if not delivery_coords:
-        return [{'restaurant': r, 'distance': None} for r in restaurants]
-    
-    restaurants_with_distance = []
-    for restaurant in restaurants:
-        restaurant_coords = fetch_coordinates(api_key, restaurant.address)
-        
-        if restaurant_coords:
-            distance_km = calc_delivery_distance(
-                restaurant_coords,
-                delivery_coords,
-            )
-            restaurants_with_distance.append({
-                'restaurant': restaurant,
-                'distance': distance_km
-            })
-        else:
-            restaurants_with_distance.append({
-                'restaurant': restaurant,
-                'distance': None
-            })
-    
-    restaurants_with_distance = sorted(
-        restaurants_with_distance,
-        key=lambda x: x['distance'] if x['distance'] is not None else float('inf')
-    )
-    
-    return restaurants_with_distance

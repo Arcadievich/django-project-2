@@ -1,3 +1,4 @@
+from django.db.models import F, Sum, DecimalField
 from django.db import models
 from django.core.validators import MinValueValidator
 
@@ -125,6 +126,16 @@ class RestaurantMenuItem(models.Model):
         return f"{self.restaurant.name} - {self.product.name}"
 
 
+class OrderQuerySet(models.QuerySet):
+    def with_total_price(self):
+        return self.annotate(
+            total_price=Sum(
+                F('items__price'),
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
+        )
+
+
 class Order(models.Model):
     ORDER_STATUS_CHOICES = [
         ('new_order', 'Необработанный'),
@@ -145,6 +156,9 @@ class Order(models.Model):
     price = models.DecimalField(
         max_digits=8,
         decimal_places=2,
+        validators=[MinValueValidator(0)],
+        null=True,
+        blank=True,
         verbose_name='Стоимость заказа',
     )
     status = models.CharField(
@@ -188,6 +202,7 @@ class Order(models.Model):
         null=True,
         verbose_name='Доставлен',
     )
+    objects = OrderQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Заказ'
@@ -211,6 +226,12 @@ class OrderItem(models.Model):
         db_index=True,
     )
     quantity = models.PositiveIntegerField('Количество', default=1)
+    price = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name='Стоимость заказа',
+    )
 
     class Meta:
         verbose_name = 'Позиция заказа'

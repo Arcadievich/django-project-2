@@ -40,21 +40,27 @@
             {{ item.restaurant.name }}
           {% else %}
             {% if item.suitable_restaurants %}
-              <details>
-                <summary>Могут приготовить ({{ item.suitable_restaurants|length }})</summary>
-                <ul>
-                  {% for restaurant_data in item.suitable_restaurants %}
-                    <li>
-                      {{ restaurant_data.restaurant.name }} - 
-                      {% if restaurant_data.distance %}
-                        {{ restaurant_data.distance }} км
-                      {% else %}
-                        расстояние неизвестно
-                      {% endif %}
-                    </li>
-                  {% endfor %}
-                </ul>
-              </details>
+              {% with first_restaurant=item.suitable_restaurants|first %}
+                {% if first_restaurant.address_not_found %}
+                  <span style="color: red; font-weight: bold;">Адрес не найден</span>
+                {% else %}
+                  <details>
+                    <summary>Могут приготовить ({{ item.suitable_restaurants|length }})</summary>
+                    <ul>
+                      {% for restaurant_data in item.suitable_restaurants %}
+                        <li>
+                          {{ restaurant_data.restaurant.name }} - 
+                          {% if restaurant_data.distance %}
+                            {{ restaurant_data.distance }} км
+                          {% else %}
+                            расстояние неизвестно
+                          {% endif %}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </details>
+                {% endif %}
+              {% endwith %}
             {% else %}
               <span style="color: red;">Нет подходящих ресторанов</span>
             {% endif %}
