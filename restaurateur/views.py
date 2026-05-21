@@ -5,7 +5,6 @@ from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
-from django.conf import settings
 
 from foodcartapp.models import Product, Restaurant, Order
 from .services import get_restaurants_for_orders, get_restaurants_with_distance
@@ -45,7 +44,7 @@ class LoginView(View):
             user = authenticate(request, username=username, password=password)
             if user:
                 login(request, user)
-                if user.is_staff:  # FIXME replace with specific permission
+                if user.is_staff:
                     return redirect("restaurateur:RestaurantView")
                 return redirect("start_page")
 
@@ -60,7 +59,7 @@ class LogoutView(auth_views.LogoutView):
 
 
 def is_manager(user):
-    return user.is_staff  # FIXME replace with specific permission
+    return user.is_staff
 
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
@@ -99,7 +98,7 @@ def view_orders(request):
               .with_total_price())
     
     suitable_restaurants_dict = get_restaurants_for_orders(orders)
-
+    
     order_list = []
     for order in orders:
         order_price = order.total_price
@@ -118,15 +117,11 @@ def view_orders(request):
 
         if not order.restaurant:
             suitable_restaurants = suitable_restaurants_dict.get(order.id, [])
-
-            if suitable_restaurants:
-                restaurants_with_distance = get_restaurants_with_distance(
-                    suitable_restaurants,
-                    order.address,
-                )
-                order_data['suitable_restaurants'] = restaurants_with_distance
-            else:
-                order_data['suitable_restaurants'] = []
+            restaurants_with_distance = get_restaurants_with_distance(
+                suitable_restaurants,
+                order.address,
+            )
+            order_data['suitable_restaurants'] = restaurants_with_distance
 
         else:
             order_data['suitable_restaurants'] = []
