@@ -4,90 +4,65 @@ import requests
 from geopy import distance
 
 from .models import PlaceCoordinates
+    
 
-
-def get_coordinates_batch(addresses, api_key=None):
-    if not addresses:
-        return {}
-    
-    if api_key is None:
-        api_key = settings.YANDEX_GEOCODER_API_KEY
-    
-    unique_addresses = {
-        addr.strip() for addr in addresses 
-        if addr and isinstance(addr, str) and addr.strip()
-    }
-    
-    if not unique_addresses:
-        return {}
-    
-    existing_places = PlaceCoordinates.objects.filter(
-        address__in=unique_addresses
-    )
-    
-    result = {}
-    missing_addresses = set(unique_addresses)
-    
-    for place in existing_places:
-        result[place.address] = (float(place.lat), float(place.lon))
-        missing_addresses.discard(place.address)
-    
-    if missing_addresses:
-        for address in missing_addresses:
-            coords = _fetch_coordinates_from_api(address, api_key)
-            if coords:
-                result[address] = coords
-                
-                try:
-                    PlaceCoordinates.objects.create(
-                        address=address,
-                        lat=coords[0],
-                        lon=coords[1]
-                    )
-                    print(f"Сохранены координаты для: {address}")
-                except Exception as e:
-                    print(f"Ошибка сохранения {address}: {e}")
-    
-    return result
-
-
-def _fetch_coordinates_from_api(address, api_key):
+def fetch_coordinates(api_key, address):
     base_url = "https://geocode-maps.yandex.ru/1.x"
-    
-    try:
-        response = requests.get(base_url, params={
-            "geocode": address,
-            "apikey": api_key,
-            "format": "json",
-        }, timeout=5)
-        
-        response.raise_for_status()
-        
-        data = response.json()
-        found_places = (
-            data.get('response', {})
-                .get('GeoObjectCollection', {})
-                .get('featureMember', [])
-        )
-        
-        if not found_places:
-            print(f"Адрес не найден: {address}")
-            return None
-        
-        most_relevant = found_places[0]
-        point = most_relevant.get('GeoObject', {}).get('Point', {})
-        pos = point.get('pos', '')
-        
-        if not pos:
-            print(f"Нет координат для: {address}")
-            return None
-        
-        lon, lat = pos.split(" ")
-        return (float(lat), float(lon))
-        
-    except Exception as e:
-        print(f"Ошибка API для {address}: {e}")
+    response = requests.get(base_url, params={
+        "geocode": address,
+        "apikey": api_key,
+        "format": "json",
+    })
+    response.raise_for_status()
+    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
+
+    if not found_places:
         return None
+
+    most_relevant = found_places[0]
+    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
+    return lat, lon
+    
+
+def get_addresses_with_coords(orders, restaurants):
+    restaurants_addresses = [restaurant.address for restaurant in restaurants]
+    orders_addresses = [order.address for order in orders]
+
+    all_addresses = restaurants_addresses + orders_addresses
+
+    db_places = PlaceCoordinates.objects.filter(address__in=all_addresses)
+
+    db_addresses = [place.address for place in db_places]
+
+    missing_addresses = [
+        address for address in all_addresses if address not in db_addresses
+    ]
+
+    addresses_with_coords = {}
+
+    for place in db_places:
+        addresses_with_coords[place.address] = (
+            float(place.lat),
+            float(place.lon),
+        )
+
+    if missing_addresses:
+        api_key = settings.YANDEX_GEOCODER_API_KEY
+
+        for address in missing_addresses:
+            coords = fetch_coordinates(api_key, address)
+
+            if coords is None:
+                addresses_with_coords[address] = None
+            else:
+                PlaceCoordinates.objects.create(
+                    address=address,
+                    lat=coords[0],
+                    lon=coords[1],
+                )
+                addresses_with_coords[address] = coords
+
+    return addresses_with_coords
     
 
 def calc_delivery_distance(restaurant_coords, delivery_coords):

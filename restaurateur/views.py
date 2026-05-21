@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
 from foodcartapp.models import Product, Restaurant, Order
+from placesapp.services import get_addresses_with_coords
 from .services import get_restaurants_for_orders, get_restaurants_with_distance
 
 
@@ -97,9 +98,13 @@ def view_orders(request):
               .prefetch_related('items__product')
               .with_total_price())
     
-    suitable_restaurants_dict = get_restaurants_for_orders(orders)
+    all_restaurants = list(Restaurant.objects.all())
     
-    order_list = []
+    suitable_restaurants_records = get_restaurants_for_orders(orders, all_restaurants)
+    
+    addresses_with_coords = get_addresses_with_coords(orders, all_restaurants)
+
+    orders_records = []
     for order in orders:
         order_price = order.total_price
 
@@ -116,20 +121,21 @@ def view_orders(request):
         }
 
         if not order.restaurant:
-            suitable_restaurants = suitable_restaurants_dict.get(order.id, [])
+            suitable_restaurants = suitable_restaurants_records.get(order.id, [])
             restaurants_with_distance = get_restaurants_with_distance(
                 suitable_restaurants,
                 order.address,
+                addresses_with_coords,
             )
             order_data['suitable_restaurants'] = restaurants_with_distance
 
         else:
             order_data['suitable_restaurants'] = []
 
-        order_list.append(order_data)
+        orders_records.append(order_data)
 
     return render(
         request,
         template_name='order_items.html',
-        context={'order_items': order_list},
+        context={'order_items': orders_records},
     )

@@ -1,10 +1,7 @@
-from django.db.models import F
 from collections import defaultdict
 
-from foodcartapp.models import Restaurant, RestaurantMenuItem
-from placesapp.services import get_coordinates_batch
+from foodcartapp.models import RestaurantMenuItem
 from placesapp.services import calc_delivery_distance
-from django.conf import settings
 
 
 def get_restaurant_menu():
@@ -21,7 +18,7 @@ def get_restaurant_menu():
     return restaurant_menu
 
 
-def get_restaurants_for_orders(orders):
+def get_restaurants_for_orders(orders, restaurants):
     if not orders:
         return {}
     
@@ -29,7 +26,7 @@ def get_restaurants_for_orders(orders):
 
     all_restaurants = {
         restaurant.id: restaurant
-        for restaurant in Restaurant.objects.all()
+        for restaurant in restaurants
     }
 
     orders_with_restaurants = {}
@@ -52,46 +49,28 @@ def get_restaurants_for_orders(orders):
     return orders_with_restaurants
 
 
-def get_restaurants_with_distance(restaurants, delivery_address):
-    if not restaurants or not delivery_address:
-        return []
-    
-    api_key = settings.YANDEX_GEOCODER_API_KEY
-    
-    restaurant_addresses = [r.address for r in restaurants if r.address]
-    all_addresses = list(set([delivery_address] + restaurant_addresses))
-    
-    coordinates_map = get_coordinates_batch(all_addresses, api_key)
-    
-    delivery_coords = coordinates_map.get(delivery_address)
-    
+def get_restaurants_with_distance(restaurants, delivery_address, addresses_with_coords):
+    restaurants_with_distance = []
+
+    delivery_coords = addresses_with_coords[delivery_address]
+
     if delivery_coords is None:
         return [{
             'restaurant': r, 
             'distance': None, 
             'address_not_found': True,
         } for r in restaurants]
-    
-    restaurants_with_distance = []
+
     for restaurant in restaurants:
-        restaurant_coords = coordinates_map.get(restaurant.address)
-        
-        if restaurant_coords:
-            distance_km = calc_delivery_distance(
-                restaurant_coords,
-                delivery_coords,
-            )
-            restaurants_with_distance.append({
-                'restaurant': restaurant,
-                'distance': distance_km,
-                'address_not_found': False,
-            })
-        else:
-            restaurants_with_distance.append({
-                'restaurant': restaurant,
-                'distance': None,
-                'address_not_found': False,
-            })
+        restaurant_coords = addresses_with_coords[restaurant.address]
+        distance = calc_delivery_distance(restaurant_coords, delivery_coords)
+        record = {
+            'restaurant': restaurant,
+            'distance': distance,
+            'address_not_found': False,
+        }
+        restaurants_with_distance.append(record)
+
     
     restaurants_with_distance.sort(
         key=lambda x: x['distance'] if x['distance'] is not None else float('inf')
