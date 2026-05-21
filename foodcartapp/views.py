@@ -97,7 +97,6 @@ def product_list_api(request):
     })
 
 
-@csrf_exempt
 @api_view(['POST'])
 @transaction.atomic
 def register_order(request):

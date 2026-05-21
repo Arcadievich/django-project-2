@@ -42,9 +42,10 @@ def get_restaurants_for_orders(orders):
     orders_with_restaurants = {}
 
     for order in orders:
-        order_product_ids = set(
-            order.items.values_list('product_id', flat=True)
-        )
+        order_product_ids = {
+            item.product_id
+            for item in order.items.all()
+        }
 
         suitable_restaurants = []
         for restaurant_id, available_products in restaurant_menu.items():
@@ -67,7 +68,6 @@ def get_restaurants_with_distance(restaurants, delivery_address):
 
     delivery_coords = fetch_coordinates(api_key, delivery_address)
 
-    # Проверяем, найден ли адрес доставки
     if delivery_coords is None:
         return [{
             'restaurant': r, 
@@ -101,3 +101,4 @@ def get_restaurants_with_distance(restaurants, delivery_address):
     )
 
     return restaurants_with_distance
+    
