@@ -1,11 +1,17 @@
 from django.urls import path
 
-from .views import product_list_api, banners_list_api, register_order
+from .views import (
+    product_list_api,
+    banners_list_api,
+    register_order,
+    test_error,
+)
 
 
 app_name = "foodcartapp"
 
 urlpatterns = [
+    path('test_error/', test_error, name='test_error'),
     path('products/', product_list_api),
     path('banners/', banners_list_api),
     path('order/', register_order),
