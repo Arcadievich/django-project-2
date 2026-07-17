@@ -79,11 +79,17 @@ ROLLBAR_ACCESS_TOKEN=your_token
 ROLLBAR_ENVIRONMENT=development
 ```
 
-Создайте файл базы данных SQLite и отмигрируйте её следующей командой:
-
+Создайте базу данных в PostgreSQL, укажите в `.env` файле переменную `DATABASE_URL`, которая будет являться адресом вашей БД:
 ```sh
-python manage.py migrate
+DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/DB_NAME
 ```
+
+Где
+- `USER` - Имя пользователя в postgres
+- `PASSWORD` - Пароль пользователя
+- `HOST` - IP-адрес, как правило `localhost`
+- `PORT` - Чаще всего `5432`
+- `DB_NAME` - Имя базы данных в postgres 
 
 Запустите сервер:
 
