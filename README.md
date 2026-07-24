@@ -215,4 +215,4 @@ sudo /sbin/swapon /var/swap.1
 
 - Второй и третий урок [учебного курса Django](https://dvmn.org/modules/django/)
 
-Ссылка на рабочий сайт [suncather.net](suncather.net)
+Ссылка на рабочий сайт [suncather.net](https://suncather.net/)
