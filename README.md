@@ -214,3 +214,5 @@ sudo /sbin/swapon /var/swap.1
 Где используется репозиторий:
 
 - Второй и третий урок [учебного курса Django](https://dvmn.org/modules/django/)
+
+Ссылка на рабочий сайт [suncather.net](suncather.net)
