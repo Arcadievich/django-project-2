@@ -13,6 +13,7 @@ echo "Деплой запускается..."
 cd $PROJECT_DIR
 git pull origin $BRANCH
 npm ci --dev
+./node_modules/.bin/parcel build bundles-src/index.js --dist-dir bundles --public-url="./"
 source $VENV_DIR/bin/activate
 pip install -r requirements.txt
 python3 manage.py collectstatic --noinput
