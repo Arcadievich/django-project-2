@@ -27,7 +27,7 @@ set -a
 source .env
 set +a
 
-curl -s -H "X-Rollbar-Access_Token: $ROLLBAR_ACCESS_TOKEN" \
+curl -s -H "X-Rollbar-Access-Token: $ROLLBAR_ACCESS_TOKEN" \
      -H "Content-Type: application/json" \
      -X POST "https://api.rollbar.com/api/1/deploy" \
      -d '{
