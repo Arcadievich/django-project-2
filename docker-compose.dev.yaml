@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  django:
+    build: .
+    container_name: star_burger_django
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./foodcartapp:/app/foodcartapp
+      - ./placesapp:/app/placesapp
+      - ./restaurateur:/app/restaurateur
+      - ./star_burger:/app/star_burger
+      - ./templates:/app/templates
+      - ./manage.py:/app/manage.py
+      - ./bundles:/app/bundles
+      - ./assets:/app/assets
+      - ./media:/app/media
+    depends_on:
+      - frontend
+    networks:
+      - star_burger_network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: star_burger_frontend
+    ports:
+      - "1234:1234"
+    volumes:
+      - ./bundles-src:/app/bundles-src
+      - ./assets:/app/assets
+      - /app/node_modules
+    networks:
+      - star_burger_network
+
+networks:
+  star_burger_network:
+    driver: bridge
