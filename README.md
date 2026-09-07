@@ -70,10 +70,10 @@ docker-compose -f docker-compose.dev.yaml up
 
 ## Как запустить prod-версию сайта
 
-Собрать фронтенд:
+Запустите Docker контейнер, который собирает фронтенд сайта:
 
-```sh
-./node_modules/.bin/parcel build bundles-src/index.js --dist-dir bundles --public-url="./"
+```bash
+docker-compose --profile builder up --build frontend-builder
 ```
 
 Настроить бэкенд: создать файл `.env` в каталоге `star_burger/` со следующими настройками:
@@ -83,6 +83,25 @@ docker-compose -f docker-compose.dev.yaml up
 - `ALLOWED_HOSTS` — [см. документацию Django](https://docs.djangoproject.com/en/5.2/ref/settings/#allowed-hosts)
 - `YANDEX_GEOCODER_API_KEY` — получите ключ в [Кабинете разработчика](https://developer.tech.yandex.ru/services)
 - `ROLLBAR_ACCESS_TOKEN` — получите токен, перейдя по ссылке "Get started in minutes" на сайте [Rollbar](https://rollbar.com)
+
+Запустите контейнер с Django, который собирает статику и мигрирует базу данных:
+
+```bash
+docker-compose --profile builder up --build django-migrate-collectstatic
+```
+
+В случае возникновения ошибки подключения к базе данных, запущенной в основной системе:
+
+- Измените переменную окружения `DATABASE_URL`, укажите хост: `172.17.0.1`
+- Перейдите в директорию с конфигами PostgreSQL `cd /etc/postgresql/16/main`
+- В файле `postgresql.conf` найдите параметр `#listen_addresses = localhost` и замените его на `listen_addresses = '*'`
+- В конце файла `pg_hba.conf` добавьте строку `host    all             all             172.16.0.0/12           md5`
+
+Запустите долгоживущий Docker контейнер с веб-сервисом Django и Gunicorn:
+
+```bash
+docker-compose up -d --build web
+```
 
 ## Как быстро обновить код на сервере
 
