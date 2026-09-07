@@ -11,14 +11,15 @@ services:
     profiles:
       - builder
 
-  django-collectstatic:
+  django-migrate-collectstatic:
     build:
       context: .
       dockerfile: Dockerfile.prod
     container_name: django_collector
     volumes:
       - ./frontend:/app/frontend
-    command: python manage.py collectstatic --noinput
+      - ./assets:/app/assets
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput"
     profiles:
       - builder
 

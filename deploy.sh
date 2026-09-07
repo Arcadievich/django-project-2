@@ -1,23 +1,18 @@
 #!/bin/bash
 set -e
 
-
 PROJECT_DIR="/opt/django-project-2"
 BRANCH="master"
-VENV_DIR="$PROJECT_DIR/venv"
 SERVICE_NAME="django-project"
-
 
 echo "Деплой запускается..."
 
 cd $PROJECT_DIR
+docker-compose down
 git pull origin $BRANCH
-npm ci --dev
-./node_modules/.bin/parcel build bundles-src/index.js --dist-dir bundles --public-url="./"
-source $VENV_DIR/bin/activate
-pip install -r requirements.txt
-python3 manage.py collectstatic --noinput
-python3 manage.py migrate
+docker-compose --profile builder up --build frontend-builder
+docker-compose --profile builder up --build django-migrate-collectstatic
+docker-compose up -d --build web
 sudo systemctl restart nginx
 sudo systemctl restart $SERVICE_NAME
 
