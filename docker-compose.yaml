@@ -33,3 +33,5 @@ services:
     volumes:
       - ./frontend:/app/frontend
       - ./media:/app/media
+    env_file:
+      - .env
