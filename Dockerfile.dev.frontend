@@ -6,7 +6,4 @@ COPY package*.json ./
 
 RUN npm ci --dev
 
-COPY bundles-src ./bundles-src
-COPY assets ./assets
-
 CMD ["./node_modules/.bin/parcel", "watch", "bundles-src/index.js", "--dist-dir", "bundles", "--public-url", "./"]
